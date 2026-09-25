@@ -484,7 +484,7 @@
   <p>All nineteen now simulate and pass: nine in Verilator 5.020, the other ten in Vivado xsim 2025.2, which is the only free simulator here that runs them.</p>
   <div class="table-wrap"><table class="sm">
     <tr><th>Repository</th><th>Challenge</th><th>Status</th><th>Why not Verilator / Icarus</th><th>Fixed when first run</th></tr>
-    <tr><td>Interview_DSP</td><td>FIR filter</td><td style="color:var(--green)">passes (Verilator), both forms</td><td>—</td><td>Design: Q1.15 coefficient shift</td></tr>
+    <tr><td>Interview_DSP</td><td>FIR filter</td><td style="color:var(--green)">passes (Verilator, Icarus), both forms</td><td>—</td><td>Design: Q1.15 coefficient shift</td></tr>
     <tr><td>Interview_DSP</td><td>FFT butterfly</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td><td>TB sampling</td></tr>
     <tr><td>Interview_FPGA</td><td>Gray-code counter</td><td style="color:var(--green)">passes (Verilator, xsim)</td><td>—</td><td>TB sampling; <code>$past</code> portability</td></tr>
     <tr><td>Interview_FPGA</td><td>Async FIFO</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td><td>Design: flag timing. TB: scoreboard</td></tr>
