@@ -238,11 +238,11 @@
   <div class="metric-grid">
     <div class="metric"><div class="metric-label">Challenge files</div><div class="metric-value">19</div></div>
     <div class="metric bad"><div class="metric-label">Did not compile</div><div class="metric-value">6</div></div>
-    <div class="metric bad"><div class="metric-label">Compiled, failed when run</div><div class="metric-value">5</div></div>
-    <div class="metric ok"><div class="metric-label">Now simulate &amp; pass</div><div class="metric-value">9</div></div>
-    <div class="metric"><div class="metric-label">Need a fuller simulator</div><div class="metric-value">10</div></div>
+    <div class="metric bad"><div class="metric-label">Compiled, failed when run</div><div class="metric-value">11</div></div>
+    <div class="metric ok"><div class="metric-label">Now simulate &amp; pass</div><div class="metric-value">19</div></div>
+    <div class="metric"><div class="metric-label">Run only in xsim</div><div class="metric-value">10</div></div>
   </div>
-  <p style="margin-top:1.25rem">A full SystemVerilog front end (slang) found the six files that did not compile. It could not find what came next. Once each testbench actually <em>ran</em>, most of them failed:</p>
+  <p style="margin-top:1.25rem">A full SystemVerilog front end (slang) found the six files that did not compile. It could not find what came next. Once each testbench actually <em>ran</em> — nine in Verilator, the other ten in Vivado xsim 2025.2 — most of them failed:</p>
   <div class="table-wrap"><table>
     <tr><th>Challenge</th><th>What simulation revealed</th></tr>
     <tr><td>GELU approximation</td><td>Placeholder coefficients — worst error 818 LSB; 1,102 of 4,095 codes over the limit</td></tr>
@@ -252,6 +252,12 @@
     <tr><td>RMSNorm</td><td>Every output zero: three separate arithmetic and timing bugs in the Newton–Raphson stage</td></tr>
     <tr><td>exp() LUT</td><td>Index taken from the wrong bits — ~100% error</td></tr>
     <tr><td>Gray counter, FFT butterfly, accumulator tree</td><td>Testbenches that sampled on the wrong cycle or ran tests concurrently</td></tr>
+    <tr><td>MAC unit FP16/INT8</td><td>FP32 adder kept the hidden bit in the mantissa, so 2 + 2 − 3 gave 3.5; a <code>clear</code> in one mode wiped the other mode's accumulator</td></tr>
+    <tr><td>Softmax pipeline</td><td>exp LUT mapped x = 0 to entry 128; the reciprocal's first guess was ≈1 for any sum below 256; two separate 2× scaling errors</td></tr>
+    <tr><td>KV-cache controller</td><td>Command word fixed at 30 bits, so “read K” returned V; every write landed one beat after its data</td></tr>
+    <tr><td>Double-buffer controller</td><td>Tile 0 went to the wrong bank; a DMA overwrote a tile not yet computed; one tile hung</td></tr>
+    <tr><td>Systolic array</td><td>Did not elaborate (wire dimensions swapped); PE enables ignored the pipeline delay; the reference model computed A·Bᵀ in 8 bits</td></tr>
+    <tr><td>Softmax UVM-lite testbench</td><td>Scoreboard would have passed a DUT that dropped outputs — it never checked the count</td></tr>
   </table></div>
   <div class="callout">
     <div class="callout-label">The lesson</div>
@@ -267,7 +273,7 @@
     <tr><th>Tool</th><th>Version used</th><th>Cost / licence</th><th>What it is</th></tr>
     <tr><td><strong>Icarus Verilog</strong></td><td>12.0</td><td>Free, GPL</td><td>Event-driven interpreter (<code>iverilog</code> → <code>vvp</code>). Strong Verilog-2005, partial SystemVerilog</td></tr>
     <tr><td><strong>Verilator</strong></td><td>5.020 (Ubuntu 24.04 package)</td><td>Free, LGPL/Artistic</td><td>Compiles SV to C++. Version 5 added <code>--timing</code>, so delays, <code>fork</code> and events work in testbenches. Newer releases than 5.020 support more</td></tr>
-    <tr><td><strong>AMD Vivado simulator</strong> (xsim)</td><td>per UG900</td><td>Free in Vivado ML Standard edition (AMD account)</td><td>Full event-driven simulator: classes, constrained random, covergroups, SVA, DPI-C, UVM 1.2</td></tr>
+    <tr><td><strong>AMD Vivado simulator</strong> (xsim)</td><td>2025.2</td><td>Free in Vivado ML Standard edition (AMD account)</td><td>Full event-driven simulator: classes, constrained random, covergroups, SVA, DPI-C, UVM 1.2</td></tr>
     <tr><td><strong>Questa–Altera FPGA Starter</strong></td><td>—</td><td>Free with Quartus Prime Lite; one-year node-locked licence, renewable</td><td>Siemens Questa, capacity-limited; verification features need a paid licence</td></tr>
     <tr><td><strong>slang</strong></td><td>pyslang 11.0</td><td>Free, MIT</td><td>Complete SV parser and elaborator with precise diagnostics. <strong>Does not simulate</strong></td></tr>
   </table></div>
@@ -281,7 +287,7 @@
   <p class="legend"><span style="color:var(--green)">✓ works</span><span style="color:var(--accent)">◐ partly</span><span style="color:var(--red)">✗ fails</span><span>? not established</span></p>
   <p class="legend"><span><sup>O</sup> observed in this exercise</span><span><sup>D</sup> vendor documentation</span><span><sup>K</sup> widely known, not re-tested here</span></p>
   <div class="table-wrap"><table class="sm" id="matrix"></table></div>
-  <p>The xsim column comes from AMD's user guide UG900 (Appendix B, SystemVerilog support); the Questa Starter column from Altera's product page and support forum. The Icarus and Verilator columns are what these two versions actually did with real files.</p>
+  <p>The Icarus, Verilator and xsim columns are what those versions actually did with the challenge files (xsim 2025.2 ran the ten that the other two could not); cells marked D come from AMD's UG900 (Appendix B) or, for Questa Starter, Altera's product page and support forum.</p>
 </section>
 
 <!-- 05 INTERACTIVE -->
@@ -367,10 +373,17 @@
       </ul>
     </div>
   </div>
-  <div class="callout">
-    <div class="callout-label">Fit for these challenges</div>
-    <p>Everything the ten un-simulated challenges need is in the left column. The coverage-plan challenge is the one to watch: it uses transition and <code>iff</code>-guarded bins, which only a real compile will settle.</p>
-  </div>
+  <h3>Observed with 2025.2 — all ten remaining challenges now run and pass</h3>
+  <div class="table-wrap"><table class="sm">
+    <tr><th>Construct</th><th>xsim 2025.2</th><th>Workaround</th></tr>
+    <tr><td><code>$past()</code> in an assertion's <code>else</code> action</td><td class="err">XSIM 43-4463: unable to infer clocking event</td><td>Print <code>$sampled(sig)</code></td></tr>
+    <tr><td>Size cast <code>16'(a - b)</code> in an <code>assign</code></td><td class="err">Not truncated — silently gives −39936 (correct in procedural code; Icarus truncates)</td><td>Declare the net at the width you need</td></tr>
+    <tr><td><code>shortreal</code> arithmetic</td><td class="err">Held at double precision; only <code>$shortrealtobits</code> rounds (Icarus behaves the same)</td><td>Round each step through <code>$shortrealtobits</code></td></tr>
+    <tr><td><code>$urandom(seed);</code> as a statement</td><td class="err">urandom system task is not supported</td><td><code>process::self().srandom(seed)</code></td></tr>
+    <tr><td><code>illegal_bins … iff (…)</code></td><td class="err">Warning 43-4398: the <code>iff</code> is ignored — the value leaves every other bin and is illegal in any mode</td><td>Check the rule with an assertion</td></tr>
+    <tr><td><code>option.cross_auto_bin_max = 0</code></td><td class="err">Rejected: “String value is expected”</td><td>An <code>ignore_bins</code> for the complement</td></tr>
+  </table></div>
+  <p>Everything else the ten needed ran as documented: classes, mailboxes, parameterised virtual interfaces with clocking blocks, named <code>disable</code> across <code>fork</code> branches, <code>##</code> sequences, <code>break</code>, array arguments, DPI-C, and covergroups with transition, <code>iff</code> and <code>with</code> bins. xsim is also <em>stricter</em> than slang: it rejected a variable driven by an <code>always_ff</code> and another process (three of the original files), an out-of-range constant index, and a module-scope variable used before its declaration — slang passed all three.</p>
 </section>
 
 <!-- 09 QUESTA STARTER -->
@@ -405,6 +418,7 @@
       <h4>What it missed</h4>
       <ul>
         <li><code>$abs</code> — not an IEEE system function — elaborated without a warning; Verilator rejected it</li>
+        <li>A variable written by an <code>always_ff</code> and by another process (illegal); a module-scope variable used before its declaration; a constant index one past the end of a wire array — xsim rejected all three</li>
         <li>Every functional bug on slide 02 — none of them is a language error</li>
       </ul>
     </div>
@@ -429,6 +443,7 @@
     <tr><td><code>STALLED[*8:$]</code> in a transition bin</td><td>Repeat ranges must be bounded: <code>[*8:16]</code></td></tr>
     <tr><td><code>drv = new(vif, fifo)</code> where <code>fifo = new()</code> is a sibling declaration</td><td>Static initialiser order is undefined — build components in an <code>initial</code> block</td></tr>
     <tr><td><code>NR_W'(a * b)</code> expecting a wide product</td><td>A cast makes its operand self-determined — <code>a * b</code> is only <code>NR_W</code> bits and overflows. Multiply into a wide temporary first</td></tr>
+    <tr><td>A variable assigned in an <code>always_ff</code> and also in an <code>initial</code> or a second <code>always_ff</code></td><td>Illegal: an <code>always_ff</code> variable may have no other driver. Merge the logic into one block, or use plain <code>always</code> in testbench code</td></tr>
     <tr><td>DPI open array <code>shortint x[]</code> with a C <code>short *</code> parameter</td><td>Open arrays arrive as <code>svOpenArrayHandle</code>. Use a fixed-size SV array to get a plain pointer</td></tr>
   </table></div>
 </section>
@@ -437,7 +452,7 @@
 <section class="slide" id="s12">
   <div class="slide-number">12</div>
   <h2>Testbench timing bugs no compiler will find</h2>
-  <p>Several of the nine working challenges needed testbench fixes as well as — or instead of — design fixes. Four patterns kept recurring.</p>
+  <p>Many of the nineteen challenges needed testbench fixes as well as — or instead of — design fixes. Four patterns kept recurring.</p>
   <div class="diagram-grid cols-2">
     <div class="diagram-panel accent-border">
       <h4>Driving on the sampling edge</h4>
@@ -458,7 +473,7 @@
   </div>
   <div class="callout">
     <div class="callout-label">Make “PASS” mean something</div>
-    <p>The DMA testbench printed PASSED whatever the data, and the FIFO scoreboard popped its expected value without comparing it. Count failures, report the count, and try one deliberate corruption to see it caught.</p>
+    <p>The DMA testbench printed PASSED whatever the data, the FIFO scoreboard popped its expected value without comparing it, and several of the xsim ten printed PASS lines no failure could reach. Count failures, report the count, and try deliberate corruptions (mutants) to see each one caught.</p>
   </div>
 </section>
 
@@ -466,27 +481,28 @@
 <section class="slide" id="s13">
   <div class="slide-number">13</div>
   <h2>Where the nineteen challenges stand</h2>
-  <div class="table-wrap"><table>
-    <tr><th>Repository</th><th>Challenge</th><th>Status</th><th>Blocking construct</th></tr>
-    <tr><td>Interview_DSP</td><td>FIR filter</td><td style="color:var(--green)">passes (Verilator), both forms</td><td>—</td></tr>
-    <tr><td>Interview_DSP</td><td>FFT butterfly</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td></tr>
-    <tr><td>Interview_FPGA</td><td>Gray-code counter</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td></tr>
-    <tr><td>Interview_FPGA</td><td>Async FIFO</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td></tr>
-    <tr><td>Interview_FPGA</td><td>CDC handshake</td><td>not yet simulated</td><td>Verilator: <code>##</code>; Icarus: lifetime override</td></tr>
-    <tr><td>RTL_LLM_Accelerators</td><td>Accumulator tree</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td></tr>
-    <tr><td>RTL_LLM_Accelerators</td><td>AXI DMA engine</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td></tr>
-    <tr><td>RTL_LLM_Accelerators</td><td>GELU approximation</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td></tr>
-    <tr><td>RTL_LLM_Accelerators</td><td>RMSNorm</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td></tr>
-    <tr><td>RTL_LLM_Accelerators</td><td>exp() LUT</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td></tr>
-    <tr><td>RTL_LLM_Accelerators</td><td>Systolic array</td><td>not yet simulated</td><td>Verilator: named <code>disable</code>; Icarus: array ports</td></tr>
-    <tr><td>RTL_LLM_Accelerators</td><td>MAC unit FP16/INT8</td><td>not yet simulated</td><td>Verilator: open-array argument; Icarus: <code>break</code></td></tr>
-    <tr><td>RTL_LLM_Accelerators</td><td>Softmax pipeline</td><td>not yet simulated</td><td>Verilator: named <code>disable</code>; Icarus: lifetime override</td></tr>
-    <tr><td>RTL_LLM_Accelerators</td><td>KV-cache controller</td><td>not yet simulated</td><td>Verilator: named <code>disable</code></td></tr>
-    <tr><td>RTL_LLM_Accelerators</td><td>RoPE unit</td><td>not yet simulated</td><td>Verilator: named <code>disable</code>; Icarus: array ports</td></tr>
-    <tr><td>RTL_LLM_Accelerators</td><td>Tile scheduler</td><td>not yet simulated</td><td>Verilator: named <code>disable</code></td></tr>
-    <tr><td>RTL_LLM_Accelerators</td><td>Double-buffer controller</td><td>not yet simulated</td><td>Verilator: named <code>disable</code>; Icarus: SVA</td></tr>
-    <tr><td>RTL_LLM_Accelerators</td><td>Softmax UVM-lite testbench</td><td>compiles (slang)</td><td>Verilator: covergroup, virtual interface</td></tr>
-    <tr><td>RTL_LLM_Accelerators</td><td>Coverage plan</td><td>compiles (slang)</td><td>Verilator: covergroup</td></tr>
+  <p>All nineteen now simulate and pass: nine in Verilator 5.020, the other ten in Vivado xsim 2025.2, which is the only free simulator here that runs them.</p>
+  <div class="table-wrap"><table class="sm">
+    <tr><th>Repository</th><th>Challenge</th><th>Status</th><th>Why not Verilator / Icarus</th><th>Fixed when first run</th></tr>
+    <tr><td>Interview_DSP</td><td>FIR filter</td><td style="color:var(--green)">passes (Verilator), both forms</td><td>—</td><td>Design: Q1.15 coefficient shift</td></tr>
+    <tr><td>Interview_DSP</td><td>FFT butterfly</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td><td>TB sampling</td></tr>
+    <tr><td>Interview_FPGA</td><td>Gray-code counter</td><td style="color:var(--green)">passes (Verilator, xsim)</td><td>—</td><td>TB sampling; <code>$past</code> portability</td></tr>
+    <tr><td>Interview_FPGA</td><td>Async FIFO</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td><td>Design: flag timing. TB: scoreboard</td></tr>
+    <tr><td>Interview_FPGA</td><td>CDC handshake</td><td style="color:var(--green)">passes (xsim)</td><td>Verilator: <code>##</code>; Icarus: lifetime override</td><td>TB: promised reset test added; assertions now fail the run</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>Accumulator tree</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td><td>TB latency</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>AXI DMA engine</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td><td>Design: WLAST. TB: verdict</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>GELU approximation</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td><td>Design: coefficients</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>RMSNorm</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td><td>Design: Newton–Raphson stage</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>exp() LUT</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td><td>Design: index bits</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>Systolic array</td><td style="color:var(--green)">passes (xsim)</td><td>Verilator: named <code>disable</code>; Icarus: array ports</td><td>Design: wiring, PE enable timing. TB: reference model, verdict</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>MAC unit FP16/INT8</td><td style="color:var(--green)">passes (xsim)</td><td>Verilator: open-array argument; Icarus: <code>break</code></td><td>Design: FP32 add + RNE, clear, FTZ, saturation. TB: bit-exact checks</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>Softmax pipeline</td><td style="color:var(--green)">passes (xsim)</td><td>Verilator: named <code>disable</code>; Icarus: lifetime override</td><td>Design: exp index, reciprocal, scaling, state reuse. TB: per-weight checks</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>KV-cache controller</td><td style="color:var(--green)">passes (xsim)</td><td>Verilator: named <code>disable</code></td><td>Design: command packing, write path, FIFO pop, seq_len. TB: reference memory</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>RoPE unit</td><td style="color:var(--green)">passes (xsim)</td><td>Verilator: named <code>disable</code>; Icarus: array ports</td><td>Design: <code>done</code> timing. TB: bit-exact model, real angles</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>Tile scheduler</td><td style="color:var(--green)">passes (xsim)</td><td>Verilator: named <code>disable</code></td><td>Design: double <code>always_ff</code> driver, <code>done</code> pulse. TB: monitor</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>Double-buffer controller</td><td style="color:var(--green)">passes (xsim)</td><td>Verilator: named <code>disable</code>; Icarus: SVA</td><td>Design: rewritten bank tracking. TB: bank-content models</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>Softmax UVM-lite testbench</td><td style="color:var(--green)">passes (xsim, DPI-C)</td><td>Verilator: covergroup, virtual interface</td><td>TB: output-count check. Portability: RNG seeding</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>Coverage plan</td><td style="color:var(--green)">passes (xsim)</td><td>Verilator: covergroup</td><td>Model: bin arrays, K bins, NaN rule, cross. TB: expected coverage</td></tr>
   </table></div>
 </section>
 
@@ -524,7 +540,8 @@ vl/usr/bin/verilator --binary --timing --assert -j 1 --top-module tb tb.sv [mode
 ./obj_dir/Vtb</code></pre></div>
   <div class="code-block"><div class="code-header">Icarus</div><pre><code>sudo apt install iverilog
 iverilog -g2012 -s tb -o tb.vvp tb.sv &amp;&amp; vvp tb.vvp</code></pre></div>
-  <div class="code-block"><div class="code-header">Vivado simulator, command line, with a DPI-C model</div><pre><code>xsc softmax_golden.c                     <span class="cm"># builds xsim.dir/work/xsc/dpi.so</span>
+  <div class="code-block"><div class="code-header">Vivado simulator, command line, with a DPI-C model</div><pre><code>source /opt/Xilinx/2025.2/Vivado/settings64.sh   <span class="cm"># xvlog, xelab, xsim, xsc</span>
+xsc softmax_golden.c                     <span class="cm"># builds xsim.dir/work/xsc/dpi.so</span>
 xvlog -sv challenge_02_softmax_testbench.sv
 xelab softmax_testbench -sv_lib dpi -s snap
 xsim snap -R</code></pre></div>
@@ -532,7 +549,7 @@ xsim snap -R</code></pre></div>
 
 <footer class="footer">
   <p><a href="https://github.com/BrendanJamesLynskey/SystemVerilog_Simulators">github.com/BrendanJamesLynskey/SystemVerilog_Simulators</a> · part of the <a href="https://github.com/BrendanJamesLynskey/Hardware">Hardware</a> collection</p>
-  <p>Observed results: Icarus Verilog 12.0, Verilator 5.020, pyslang 11.0, September 2026. Documented results: AMD UG900 (Vivado simulator SystemVerilog support tables) and Altera's Questa–Altera FPGA Edition product page and community forum.</p>
+  <p>Observed results: Icarus Verilog 12.0, Verilator 5.020, AMD Vivado simulator (xsim) 2025.2, pyslang 11.0, September 2026. Documented results: AMD UG900 (Vivado simulator SystemVerilog support tables) and Altera's Questa–Altera FPGA Edition product page and community forum.</p>
 </footer>
 
 <script>
@@ -541,33 +558,41 @@ xsim snap -R</code></pre></div>
 const TOOLS = ['Icarus 12', 'Verilator 5.020', 'Vivado xsim', 'Questa Starter'];
 const FEATURES = [
   { id: 'rtl',   label: 'Synthesisable RTL (always_ff/comb, packages, structs)',
-    c: [['p','K','always_comb can re-evaluate forever when reading submodule outputs — use always @(*)'], ['y','O',''], ['y','D',''], ['y','D','']] },
+    c: [['p','K','always_comb can re-evaluate forever when reading submodule outputs — use always @(*)'], ['y','O',''], ['y','O',''], ['y','D','']] },
   { id: 'timing', label: 'Testbench timing: # delays, fork/join, events',
-    c: [['y','K',''], ['y','O','needs --timing'], ['y','D',''], ['y','D','']] },
+    c: [['y','K',''], ['y','O','needs --timing'], ['y','O',''], ['y','D','']] },
   { id: 'auto',  label: 'automatic variable inside a static block',
-    c: [['n','O','lifetime override not supported'], ['y','O',''], ['u','',''], ['u','','']] },
+    c: [['n','O','lifetime override not supported'], ['y','O',''], ['y','O',''], ['u','','']] },
   { id: 'arrarg', label: 'Unpacked arrays as task/function arguments',
-    c: [['n','O','unpacked subroutine ports unsupported'], ['p','O','fixed-size works; fixed → open [] fails in C++'], ['y','D',''], ['u','','']] },
+    c: [['n','O','unpacked subroutine ports unsupported'], ['p','O','fixed-size works; fixed → open [] fails in C++'], ['y','O','fixed and open [] both work'], ['u','','']] },
   { id: 'brk',   label: 'break / continue',
-    c: [['n','O','break not supported'], ['y','K',''], ['y','D',''], ['y','K','']] },
+    c: [['n','O','break not supported'], ['y','K',''], ['y','O',''], ['y','K','']] },
   { id: 'fout',  label: 'Functions with output arguments',
-    c: [['n','O','“port is not an input port”'], ['y','K',''], ['u','',''], ['y','K','']] },
+    c: [['n','O','“port is not an input port”'], ['y','K',''], ['y','O',''], ['y','K','']] },
   { id: 'sva',   label: 'Concurrent assertions with |=> and $past',
-    c: [['n','O','concurrent_assertion_item not supported'], ['y','O',''], ['y','D',''], ['u','','']] },
+    c: [['n','O','concurrent_assertion_item not supported'], ['y','O',''], ['y','O',''], ['u','','']] },
   { id: 'seq',   label: 'Sequences with ## cycle delays',
-    c: [['n','O','no concurrent assertions'], ['n','O','Unsupported: ## in sequence'], ['y','D',''], ['u','','']] },
+    c: [['n','O','no concurrent assertions'], ['n','O','Unsupported: ## in sequence'], ['y','O',''], ['u','','']] },
   { id: 'dis',   label: 'disable of a named block from another fork branch',
-    c: [['u','',''], ['n','O','“disable isn’t underneath a begin”'], ['u','','disable fork is documented'], ['u','','']] },
+    c: [['u','',''], ['n','O','“disable isn’t underneath a begin”'], ['y','O',''], ['u','','']] },
   { id: 'cls',   label: 'Classes and mailboxes',
-    c: [['p','K','partial class support'], ['p','O','elaborated; the virtual-interface use around them failed'], ['y','D',''], ['u','','']] },
+    c: [['p','K','partial class support'], ['p','O','elaborated; the virtual-interface use around them failed'], ['y','O',''], ['u','','']] },
   { id: 'vif',   label: 'Virtual interfaces and clocking blocks',
-    c: [['u','',''], ['p','O','fails with parameterised interfaces and @(vif.cb)'], ['y','D',''], ['u','','']] },
+    c: [['u','',''], ['p','O','fails with parameterised interfaces and @(vif.cb)'], ['y','O','parameterised interface and @(vif.cb) both work'], ['u','','']] },
   { id: 'rand',  label: 'Constrained random: rand, constraints, randomize()',
     c: [['n','K',''], ['u','',''], ['y','D',''], ['n','D','needs a paid verification licence']] },
   { id: 'cov',   label: 'Covergroups (coverpoints, bins, cross)',
-    c: [['n','K',''], ['n','O','Unsupported: covergroup'], ['y','D','one bin form (§19.5.1.2) unsupported'], ['n','D','needs a paid verification licence']] },
+    c: [['n','K',''], ['n','O','Unsupported: covergroup'], ['p','O','transition, iff and with bins work; iff on illegal/ignore bins is ignored; cross_auto_bin_max rejected'], ['n','D','needs a paid verification licence']] },
   { id: 'dpi',   label: 'DPI-C import of C functions',
-    c: [['n','K','VPI only'], ['y','O','C file on the command line'], ['y','D','open arrays included'], ['u','','']] },
+    c: [['n','K','VPI only'], ['y','O','C file on the command line'], ['y','O','xsc model.c, then xelab -sv_lib dpi'], ['u','','']] },
+  { id: 'pastact', label: '$past inside an assertion action block (else $error)',
+    c: [['n','O','no concurrent assertions'], ['p','O','implicit-clock form works; explicit clock: “Unsupported: $past expr2 and/or clock arguments”'], ['n','O','XSIM 43-4463: cannot infer clocking event'], ['u','','']] },
+  { id: 'castasg', label: "Size cast W'(expr) in a continuous assignment",
+    c: [['y','O',''], ['u','',''], ['n','O','not truncated in assign / net declaration (procedural code is correct)'], ['u','','']] },
+  { id: 'sreal', label: 'shortreal arithmetic at single precision',
+    c: [['n','O','held as double'], ['n','K','promoted to real (SHORTREAL warning)'], ['n','O','held as double; $shortrealtobits rounds'], ['u','','']] },
+  { id: 'urseed', label: '$urandom(seed) as a statement, to seed the RNG',
+    c: [['p','O','warns and accepts, but repeating it did not repeat the sequence'], ['u','',''], ['n','O','“urandom system task is not supported” — use process::self().srandom()'], ['u','','']] },
   { id: 'uvm',   label: 'UVM library',
     c: [['n','K',''], ['u','',''], ['y','D','UVM 1.2'], ['u','','']] },
 ];
