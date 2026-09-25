@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free SystemVerilog Simulators — What Actually Runs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700&family=Archivo:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,700&family=Share+Tech+Mono:wght@400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #10294a;
+            --bg-card: #143154;
+            --bg-code: #19395f;
+            --text-primary: #eff4f8;
+            --text-secondary: #98b2cd;
+            --accent: #f3bf41;
+            --accent-dim: #f3bf4122;
+            --accent-glow: #f3bf4133;
+            --green: #73c7af;
+            --blue: #a5dcfe;
+            --purple: #c7b9fe;
+            --red: #f86d53;
+            --border: #294f79;
+            --font-display: 'Saira Semi Condensed', sans-serif;
+            --font-mono: 'Share Tech Mono', 'Share Tech Mono', monospace;
+            --font-body: 'Archivo', sans-serif;
+            --max-width: 920px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background: var(--bg-primary); color: var(--text-primary);
+            font-family: var(--font-body); font-size: 17px; line-height: 1.7;
+            overflow-x: hidden;
+        }
+        .hero {
+            min-height: 100vh; display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            padding: 2rem 1.5rem; text-align: center; position: relative;
+        }
+        .hero::before {
+            content: ''; position: absolute; top: 0; left: 50%;
+            transform: translateX(-50%); width: 600px; height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none; z-index: 0;
+        }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label {
+            font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent);
+            letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 1rem;
+        }
+        .hero h1 {
+            font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 700; line-height: 1.2; margin-bottom: 1rem;
+        }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle {
+            font-size: 1.1rem; color: var(--text-secondary);
+            max-width: 640px; margin-bottom: 2rem;
+        }
+        .tags { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-bottom: 2.5rem; }
+        .tag {
+            font-family: var(--font-mono); font-size: 0.75rem;
+            padding: 0.25rem 0.75rem; border-radius: 999px;
+            border: 1px solid var(--accent); color: var(--accent);
+            background: var(--accent-dim); white-space: nowrap;
+        }
+        .slide {
+            min-height: 100vh; max-width: var(--max-width); margin: 0 auto;
+            padding: 4rem 1.5rem; position: relative;
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .slide-number {
+            font-family: var(--font-display); font-size: 5rem; font-weight: 700;
+            color: var(--accent-dim); position: absolute; top: 2rem; right: 1.5rem;
+            line-height: 1; user-select: none;
+        }
+        .slide h2 {
+            font-family: var(--font-display); font-size: 1.9rem; font-weight: 700;
+            color: var(--accent); margin-bottom: 1.5rem; line-height: 1.25;
+        }
+        .slide h3 {
+            font-family: var(--font-display); font-size: 1.3rem; font-weight: 600;
+            color: var(--text-primary); margin-top: 1.5rem; margin-bottom: 0.75rem;
+        }
+        .slide p { margin-bottom: 1rem; color: var(--text-secondary); }
+        .slide p strong { color: var(--text-primary); }
+        .slide ul, .slide ol { margin-bottom: 1rem; padding-left: 1.5rem; color: var(--text-secondary); }
+        .slide li { margin-bottom: 0.4rem; }
+        .slide li strong { color: var(--text-primary); }
+
+        .code-block {
+            background: var(--bg-code); border: 1px solid var(--border);
+            border-radius: 8px; margin: 1.25rem 0; overflow: hidden;
+        }
+        .code-header {
+            font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent);
+            background: rgba(243,191,65,0.08); padding: 0.4rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .code-block pre { margin: 0; padding: 1rem; overflow-x: auto; }
+        .code-block code { font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.6; color: #d4e0ec; }
+        .kw { color: #fc9883; } .fn { color: #decffe; } .str { color: #d3edfc; }
+        .cm { color: #98b2cd; font-style: italic; } .num { color: #bde6fe; }
+        .type { color: #fac667; }
+
+        .table-wrap { overflow-x: auto; margin: 1.25rem 0; border-radius: 8px; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th { background: var(--bg-code); color: var(--accent); font-weight: 600; text-align: left; padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--border); font-family: var(--font-display); white-space: nowrap; }
+        td { padding: 0.5rem 0.9rem; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) td { background: rgba(20,49,84,0.5); }
+        td strong, td code { color: var(--text-primary); }
+        td code { font-family: var(--font-mono); font-size: 0.85em; background: var(--bg-code); padding: 0.05rem 0.3rem; border-radius: 3px; }
+
+        .diagram-grid { display: grid; gap: 0.75rem; margin: 1.5rem 0; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; }
+        .diagram-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+        .diagram-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .diagram-panel { padding: 1rem; background: var(--bg-code); border: 1px solid var(--border); border-radius: 6px; }
+        .diagram-panel.accent-border { border-left: 3px solid var(--accent); }
+        .diagram-panel h4 { font-family: var(--font-display); font-size: 1rem; color: var(--accent); margin-bottom: 0.5rem; }
+        .diagram-panel p, .diagram-panel ul { font-size: 0.85rem; }
+        .callout { background: var(--bg-card); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 1rem 1.25rem; margin: 1.25rem 0; }
+        .callout p { margin-bottom: 0; }
+        .callout-label { font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.3rem; }
+
+        .canvas-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin: 1.25rem 0; overflow-x: auto; }
+        .canvas-wrap svg, .canvas-wrap canvas { display: block; margin: 0 auto; max-width: 100%; }
+
+        .control-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin: 1.25rem 0; }
+        .control-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+        .control-row label { font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-secondary); min-width: 200px; }
+        .control-row select, .control-row input[type="range"], .control-row input[type="number"] {
+            background: var(--bg-code); border: 1px solid var(--border);
+            color: var(--text-primary); border-radius: 4px; padding: 0.3rem 0.5rem;
+            font-family: var(--font-mono); font-size: 0.85rem;
+        }
+        .control-row input[type="range"] { flex: 1; min-width: 180px; accent-color: var(--accent); }
+        .control-row .val { font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); min-width: 90px; text-align: right; }
+        .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.6rem; margin-top: 0.75rem; }
+        .metric { background: var(--bg-code); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.8rem; text-align: center; }
+        .metric .metric-label { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; }
+        .metric .metric-value { font-family: var(--font-display); font-size: 1.25rem; color: var(--accent); font-weight: 600; margin-top: 0.2rem; }
+        .pill-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.4rem 0 0.8rem; }
+        .pill { font-family: var(--font-mono); font-size: 0.75rem; padding: 0.25rem 0.7rem; border-radius: 999px; background: var(--bg-code); border: 1px solid var(--border); color: var(--text-secondary); cursor: pointer; user-select: none; }
+        .pill.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+        .pill:hover { color: var(--text-primary); }
+
+        .footer { text-align: center; padding: 3rem 1.5rem; color: var(--text-secondary); font-size: 0.85rem; border-top: 1px solid var(--border); max-width: var(--max-width); margin: 0 auto; }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+
+        .contents-list { list-style: none; padding-left: 0; counter-reset: contents; }
+        .contents-list li { counter-increment: contents; padding: 0.55rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; }
+        .contents-list li:last-child { border-bottom: none; }
+        .contents-list li::before { content: counter(contents, decimal-leading-zero); font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); min-width: 2rem; }
+        .contents-list a { color: var(--text-primary); text-decoration: none; transition: color 0.2s; }
+        .contents-list a:hover { color: var(--accent); }
+
+        @media (max-width: 640px) {
+            .slide { padding: 3rem 1rem; min-height: auto; }
+            .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
+            .slide h2 { font-size: 1.5rem; }
+            .diagram-grid.cols-2, .diagram-grid.cols-3 { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 1.8rem; }
+            table { font-size: 0.78rem; }
+        }
+    </style>
+<style>:root{font-synthesis-weight:none}</style>
+<style>
+  /* support-matrix cells */
+  .sm td.y, .sm td.n, .sm td.p, .sm td.u { text-align: center; font-family: var(--font-mono); white-space: nowrap; }
+  .sm td.y { color: var(--green); }
+  .sm td.n { color: var(--red); }
+  .sm td.p { color: var(--accent); }
+  .sm td.u { color: var(--text-secondary); opacity: 0.7; }
+  .sm td sup { font-size: 0.65em; color: var(--text-secondary); margin-left: 0.15em; }
+  .sm th { white-space: normal; }
+  .legend { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-secondary); }
+  .legend span { margin-right: 1.2rem; }
+  .verdict { font-family: var(--font-mono); font-size: 0.85rem; }
+  .verdict .why { display: block; font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.3rem; white-space: normal; text-align: left; }
+  .metric.ok .metric-value { color: var(--green); }
+  .metric.bad .metric-value { color: var(--red); }
+  .err { font-family: var(--font-mono); font-size: 0.8rem; color: var(--red); }
+  .slide a { color: var(--accent); text-decoration: none; }
+  .slide a:hover { text-decoration: underline; }
+  .contents-list a { color: var(--text-primary); }
+  .footer a { overflow-wrap: anywhere; }
+  .slide > * { min-width: 0; max-width: 100%; }  /* let .table-wrap scroll inside the flex column */
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="series-label">Hardware · Verification Tools</div>
+  <h1>Free SystemVerilog Simulators — <span class="accent">What Actually Runs</span></h1>
+  <p class="subtitle">Icarus, Verilator, AMD's Vivado simulator, Questa–Altera Starter and the slang front end, compared construct by construct — from putting nineteen interview-prep RTL challenges through them and recording every error message.</p>
+  <div class="tags">
+    <span class="tag">Icarus Verilog 12</span>
+    <span class="tag">Verilator 5.020</span>
+    <span class="tag">Vivado xsim</span>
+    <span class="tag">Questa Starter</span>
+    <span class="tag">slang</span>
+    <span class="tag">Portability</span>
+  </div>
+</section>
+
+<!-- 01 CONTENTS -->
+<section class="slide" id="s1">
+  <div class="slide-number">01</div>
+  <h2>What this deck covers</h2>
+  <ol class="contents-list">
+    <li><a href="#s2">Why it matters: parsing is not simulating</a></li>
+    <li><a href="#s3">The five tools</a></li>
+    <li><a href="#s4">The support matrix</a></li>
+    <li><a href="#s5">Interactive: which simulator runs my testbench?</a></li>
+    <li><a href="#s6">Verilator 5.020 — what broke, and the workarounds</a></li>
+    <li><a href="#s7">Icarus Verilog 12 — what broke, and the workarounds</a></li>
+    <li><a href="#s8">AMD Vivado simulator (xsim) — the free full-featured option</a></li>
+    <li><a href="#s9">Questa–Altera FPGA Starter Edition — the licence catch</a></li>
+    <li><a href="#s10">slang — a compiler, not a simulator</a></li>
+    <li><a href="#s11">Code that every tool should reject</a></li>
+    <li><a href="#s12">Testbench timing bugs no compiler will find</a></li>
+    <li><a href="#s13">Where the nineteen challenges stand</a></li>
+    <li><a href="#s14">Choosing a simulator — and the disk it needs</a></li>
+    <li><a href="#s15">Set-up recipes</a></li>
+  </ol>
+</section>
+
+<!-- 02 WHY -->
+<section class="slide" id="s2">
+  <div class="slide-number">02</div>
+  <h2>Parsing is not simulating</h2>
+  <p>The starting point was a review of the SystemVerilog coding challenges in three interview-preparation repositories — <code>Interview_FPGA</code>, <code>Interview_DSP</code> and <code>Interview_RTL_LLM_Accelerators</code>. Nineteen <code>.sv</code> files, each a design plus a self-checking testbench.</p>
+  <div class="metric-grid">
+    <div class="metric"><div class="metric-label">Challenge files</div><div class="metric-value">19</div></div>
+    <div class="metric bad"><div class="metric-label">Did not compile</div><div class="metric-value">6</div></div>
+    <div class="metric bad"><div class="metric-label">Compiled, failed when run</div><div class="metric-value">5</div></div>
+    <div class="metric ok"><div class="metric-label">Now simulate &amp; pass</div><div class="metric-value">9</div></div>
+    <div class="metric"><div class="metric-label">Need a fuller simulator</div><div class="metric-value">10</div></div>
+  </div>
+  <p style="margin-top:1.25rem">A full SystemVerilog front end (slang) found the six files that did not compile. It could not find what came next. Once each testbench actually <em>ran</em>, most of them failed:</p>
+  <div class="table-wrap"><table>
+    <tr><th>Challenge</th><th>What simulation revealed</th></tr>
+    <tr><td>GELU approximation</td><td>Placeholder coefficients — worst error 818 LSB; 1,102 of 4,095 codes over the limit</td></tr>
+    <tr><td>FIR filter</td><td>Never shifted out the Q1.15 coefficient bits, so every output saturated at 32767 — the passband test “passed” because 32767 &gt; 5000</td></tr>
+    <tr><td>AXI DMA engine</td><td>STORE hung: WLAST compared against a burst length that shrank during the burst</td></tr>
+    <tr><td>Async FIFO</td><td>Empty/full flags two cycles late — a back-to-back read underflowed</td></tr>
+    <tr><td>RMSNorm</td><td>Every output zero: three separate arithmetic and timing bugs in the Newton–Raphson stage</td></tr>
+    <tr><td>exp() LUT</td><td>Index taken from the wrong bits — ~100% error</td></tr>
+    <tr><td>Gray counter, FFT butterfly, accumulator tree</td><td>Testbenches that sampled on the wrong cycle or ran tests concurrently</td></tr>
+  </table></div>
+  <div class="callout">
+    <div class="callout-label">The lesson</div>
+    <p>A clean compile says the code is legal SystemVerilog. Only a simulator says it does what the comments claim. Which simulator you can use depends on which language features the testbench leans on — hence this deck.</p>
+  </div>
+</section>
+
+<!-- 03 TOOLS -->
+<section class="slide" id="s3">
+  <div class="slide-number">03</div>
+  <h2>The five tools</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Tool</th><th>Version used</th><th>Cost / licence</th><th>What it is</th></tr>
+    <tr><td><strong>Icarus Verilog</strong></td><td>12.0</td><td>Free, GPL</td><td>Event-driven interpreter (<code>iverilog</code> → <code>vvp</code>). Strong Verilog-2005, partial SystemVerilog</td></tr>
+    <tr><td><strong>Verilator</strong></td><td>5.020 (Ubuntu 24.04 package)</td><td>Free, LGPL/Artistic</td><td>Compiles SV to C++. Version 5 added <code>--timing</code>, so delays, <code>fork</code> and events work in testbenches. Newer releases than 5.020 support more</td></tr>
+    <tr><td><strong>AMD Vivado simulator</strong> (xsim)</td><td>per UG900</td><td>Free in Vivado ML Standard edition (AMD account)</td><td>Full event-driven simulator: classes, constrained random, covergroups, SVA, DPI-C, UVM 1.2</td></tr>
+    <tr><td><strong>Questa–Altera FPGA Starter</strong></td><td>—</td><td>Free with Quartus Prime Lite; one-year node-locked licence, renewable</td><td>Siemens Questa, capacity-limited; verification features need a paid licence</td></tr>
+    <tr><td><strong>slang</strong></td><td>pyslang 11.0</td><td>Free, MIT</td><td>Complete SV parser and elaborator with precise diagnostics. <strong>Does not simulate</strong></td></tr>
+  </table></div>
+  <p>Commercial simulators (Synopsys VCS, Cadence Xcelium, Siemens Questa) support essentially the whole language, and are the reference the other tools are measured against.</p>
+</section>
+
+<!-- 04 MATRIX -->
+<section class="slide" id="s4">
+  <div class="slide-number">04</div>
+  <h2>The support matrix</h2>
+  <p class="legend"><span style="color:var(--green)">✓ works</span><span style="color:var(--accent)">◐ partly</span><span style="color:var(--red)">✗ fails</span><span>? not established</span></p>
+  <p class="legend"><span><sup>O</sup> observed in this exercise</span><span><sup>D</sup> vendor documentation</span><span><sup>K</sup> widely known, not re-tested here</span></p>
+  <div class="table-wrap"><table class="sm" id="matrix"></table></div>
+  <p>The xsim column comes from AMD's user guide UG900 (Appendix B, SystemVerilog support); the Questa Starter column from Altera's product page and support forum. The Icarus and Verilator columns are what these two versions actually did with real files.</p>
+</section>
+
+<!-- 05 INTERACTIVE -->
+<section class="slide" id="s5">
+  <div class="slide-number">05</div>
+  <h2>Which simulator runs my testbench?</h2>
+  <p>Tick the features your testbench uses. Each simulator's verdict is the weakest cell across your selection.</p>
+  <div class="control-panel">
+    <div class="pill-row" id="featPills"></div>
+    <div class="metric-grid" id="verdicts"></div>
+  </div>
+  <p>Presets: <a href="#s5" class="preset" data-set="rtl">plain RTL + self-checking TB</a> · <a href="#s5" class="preset" data-set="sva">RTL + SVA assertions</a> · <a href="#s5" class="preset" data-set="uvmlite">class-based TB with coverage</a> · <a href="#s5" class="preset" data-set="none">clear</a></p>
+</section>
+
+<!-- 06 VERILATOR -->
+<section class="slide" id="s6">
+  <div class="slide-number">06</div>
+  <h2>Verilator 5.020 — what broke</h2>
+  <p>Built with <code>verilator --binary --timing --assert</code>. Every row is a real message from a real file.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Construct</th><th>Message</th><th>Workaround</th></tr>
+    <tr><td><code>covergroup</code></td><td class="err">Unsupported: covergroup</td><td>None in 5.020 — use xsim, or strip coverage for a functional run</td></tr>
+    <tr><td><code>##1</code> inside a sequence</td><td class="err">Unsupported: ## (in sequence expression)</td><td>Rewrite with <code>|=&gt;</code> and <code>$past</code>, which do work</td></tr>
+    <tr><td><code>disable blk</code> from a sibling <code>fork</code> branch</td><td class="err">disable isn't underneath a begin with name</td><td>Replace the watchdog pattern with a shared <code>done</code> flag, or <code>disable fork</code></td></tr>
+    <tr><td>Fixed array passed to an open-array <code>[]</code> argument</td><td class="err">C++ compile: no match for operator= (VlQueue vs VlUnpacked)</td><td>Declare the argument with a fixed size</td></tr>
+    <tr><td><code>virtual softmax_if</code> handle for an instance with a parameter override, <code>softmax_if #(.N(16))</code></td><td class="err">Unsupported: virtual interface never assigned any actual interface</td><td>Instantiate the interface with its default parameters, or parameterise the virtual-interface type to match</td></tr>
+    <tr><td>Waiting on a clocking block through a virtual interface: <code>@(vif.driver_cb)</code></td><td class="err">Internal Error: MemberSel of non-variable</td><td>Wait on the clock edge itself: <code>@(negedge vif.clk)</code></td></tr>
+    <tr><td><code>typedef logic [7:0] t [N];</code> in a package</td><td class="err">Internal: Unexpected Call</td><td>Write the range as <code>[0:N-1]</code></td></tr>
+    <tr><td>Parallel build (<code>-j 8</code>)</td><td class="err">Internal Error: attempted to destroy locked Thread Pool</td><td>Intermittent; <code>-j 1</code> is reliable</td></tr>
+  </table></div>
+  <p>What <em>did</em> work: concurrent assertions with <code>|=&gt;</code> and <code>$past</code>, <code>--timing</code> delays and events, <code>fork/join</code>, automatic variables in <code>always_ff</code>, DPI-C with a linked C file, and <code>real</code> maths including <code>$exp</code>.</p>
+</section>
+
+<!-- 07 ICARUS -->
+<section class="slide" id="s7">
+  <div class="slide-number">07</div>
+  <h2>Icarus Verilog 12 — what broke</h2>
+  <p>Compiled with <code>iverilog -g2012</code>. Icarus is the simulator the standalone RTL projects in this GitHub (AI_MMUL_Unit, AXI4_Crossbar, Cache_Controller_MESI, the RISC-V SoC) were verified with — usually under cocotb.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Construct</th><th>Message</th><th>Workaround</th></tr>
+    <tr><td>Unpacked arrays as task/function ports</td><td class="err">sorry: Subroutine ports with unpacked dimensions are not yet supported</td><td>Pass a packed vector, or use module-level arrays</td></tr>
+    <tr><td><code>break</code></td><td class="err">sorry: break statements not supported</td><td>Loop flag in the loop condition</td></tr>
+    <tr><td>Concurrent assertions (<code>assert property</code>)</td><td class="err">sorry: concurrent_assertion_item not supported</td><td>Compile with <code>-gno-assertions</code>, or use immediate assertions in <code>always</code> blocks</td></tr>
+    <tr><td><code>automatic</code> variable inside a static block</td><td class="err">sorry: Overriding the default variable lifetime is not yet supported</td><td>Declare at module scope or in an <code>automatic</code> task</td></tr>
+    <tr><td>Function with an <code>output</code> argument</td><td class="err">Function … port c is not an input port</td><td>Make it a task</td></tr>
+  </table></div>
+  <h3>Workarounds already in the RTL projects</h3>
+  <ul>
+    <li><strong>Cache_Controller_MESI</strong>: <code>always @(*)</code> in place of <code>always_comb</code> “to prevent iverilog infinite re-evaluation loops when blocks read submodule outputs”, and two <code>mesi_handler</code> instances to “avoid combinational loops through a shared mux in iverilog”.</li>
+    <li><strong>AXI4_Crossbar</strong>: <code>always @(*)</code> for the same reason.</li>
+  </ul>
+</section>
+
+<!-- 08 XSIM -->
+<section class="slide" id="s8">
+  <div class="slide-number">08</div>
+  <h2>AMD Vivado simulator (xsim)</h2>
+  <p>Ships in every Vivado edition, including the free <strong>Vivado ML Standard</strong>. It needs no FPGA project: <code>xvlog</code>, <code>xelab</code> and <code>xsim</code> run from the command line.</p>
+  <div class="diagram-grid cols-2">
+    <div class="diagram-panel accent-border">
+      <h4>Supported (UG900, Appendix B)</h4>
+      <ul>
+        <li>Classes, inheritance, parameterised classes</li>
+        <li>Mailboxes, virtual interfaces, clocking blocks</li>
+        <li>Arrays as subroutine arguments</li>
+        <li><code>disable fork</code>; loop jump statements</li>
+        <li>Concurrent assertions: sequences, implication, <code>iff</code></li>
+        <li>Constrained random: <code>rand</code>/<code>randc</code>, constraints, <code>randomize()</code></li>
+        <li>Covergroups, including cross bins</li>
+        <li>DPI-C, including open arrays; UVM 1.2</li>
+      </ul>
+    </div>
+    <div class="diagram-panel">
+      <h4>Not supported</h4>
+      <ul>
+        <li><code>cover</code> statements; assertion coverage</li>
+        <li>Deferred assertions</li>
+        <li><code>always</code>/<code>eventually</code>/<code>until</code>/strong/weak properties</li>
+        <li>Multiclock assertions; global clocking</li>
+        <li><code>bind</code> (binding code to scopes)</li>
+        <li><code>randsequence</code>; tagged unions; pattern matching</li>
+        <li>One covergroup bin form (LRM §19.5.1.2)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout">
+    <div class="callout-label">Fit for these challenges</div>
+    <p>Everything the ten un-simulated challenges need is in the left column. The coverage-plan challenge is the one to watch: it uses transition and <code>iff</code>-guarded bins, which only a real compile will settle.</p>
+  </div>
+</section>
+
+<!-- 09 QUESTA STARTER -->
+<section class="slide" id="s9">
+  <div class="slide-number">09</div>
+  <h2>Questa–Altera FPGA Starter Edition</h2>
+  <p>Free with Quartus Prime Lite. The licence comes from Altera's Self-Service Licensing Center, is node-locked, and must be renewed every year. The Starter edition is capacity-limited; the paid Altera FPGA Edition raises the limit.</p>
+  <div class="callout">
+    <div class="callout-label">The catch</div>
+    <p><code>randomize</code>, <code>randcase</code>, <code>randsequence</code> and <code>covergroup</code> need a separate <strong>verification licence</strong>. That rules out exactly the class-based, coverage-driven testbenches that Icarus and Verilator also struggle with.</p>
+  </div>
+  <p>It remains a good simulator for plain RTL with self-checking testbenches, and for mixed VHDL/Verilog designs — but for those, Icarus and Verilator already do the job without a licence to renew.</p>
+</section>
+
+<!-- 10 SLANG -->
+<section class="slide" id="s10">
+  <div class="slide-number">10</div>
+  <h2>slang — a compiler, not a simulator</h2>
+  <p>slang parses and elaborates the full IEEE 1800-2017 language and reports errors precisely. Through <code>pip install pyslang</code> it is the quickest way to answer “is this legal SystemVerilog?”.</p>
+  <div class="diagram-grid cols-2">
+    <div class="diagram-panel accent-border">
+      <h4>What it caught</h4>
+      <ul>
+        <li>All six non-compiling files, with line numbers</li>
+        <li>An assertion naming a signal that did not exist in the testbench</li>
+        <li>Packed structs holding unpacked arrays</li>
+        <li><code>binsof</code> used outside a cross</li>
+        <li>Unbounded <code>[*8:$]</code> in a transition bin</li>
+      </ul>
+    </div>
+    <div class="diagram-panel">
+      <h4>What it missed</h4>
+      <ul>
+        <li><code>$abs</code> — not an IEEE system function — elaborated without a warning; Verilator rejected it</li>
+        <li>Every functional bug on slide 02 — none of them is a language error</li>
+      </ul>
+    </div>
+  </div>
+  <p>Use it as a pre-commit lint across every file. Then simulate.</p>
+</section>
+
+<!-- 11 ILLEGAL CODE -->
+<section class="slide" id="s11">
+  <div class="slide-number">11</div>
+  <h2>Code that every tool should reject</h2>
+  <p>These were in the challenge files. They are not simulator limitations — the language forbids them, or leaves the result undefined.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Mistake</th><th>Fix</th></tr>
+    <tr><td>Declaration after a statement in a <code>begin…end</code></td><td>Hoist every declaration to the top of the block</td></tr>
+    <tr><td><code>$abs(x)</code></td><td>Not a system function: write <code>(x &lt; 0) ? -x : x</code> in a helper</td></tr>
+    <tr><td><code>struct packed</code> containing unpacked arrays</td><td>Use an unpacked <code>struct</code></td></tr>
+    <tr><td><code>$error("a" "b")</code> — adjacent literals</td><td>SV does not concatenate them: use one literal</td></tr>
+    <tr><td><code>$display("=" * 60)</code></td><td>That is Python. Use <code>{60{"="}}</code></td></tr>
+    <tr><td>A variable declared inside a <code>covergroup</code></td><td>Make it a class member</td></tr>
+    <tr><td><code>binsof()</code> in a coverpoint's bins</td><td>Only legal in cross bins — use <code>bins b = {v} iff (cond);</code></td></tr>
+    <tr><td><code>STALLED[*8:$]</code> in a transition bin</td><td>Repeat ranges must be bounded: <code>[*8:16]</code></td></tr>
+    <tr><td><code>drv = new(vif, fifo)</code> where <code>fifo = new()</code> is a sibling declaration</td><td>Static initialiser order is undefined — build components in an <code>initial</code> block</td></tr>
+    <tr><td><code>NR_W'(a * b)</code> expecting a wide product</td><td>A cast makes its operand self-determined — <code>a * b</code> is only <code>NR_W</code> bits and overflows. Multiply into a wide temporary first</td></tr>
+    <tr><td>DPI open array <code>shortint x[]</code> with a C <code>short *</code> parameter</td><td>Open arrays arrive as <code>svOpenArrayHandle</code>. Use a fixed-size SV array to get a plain pointer</td></tr>
+  </table></div>
+</section>
+
+<!-- 12 TB TIMING -->
+<section class="slide" id="s12">
+  <div class="slide-number">12</div>
+  <h2>Testbench timing bugs no compiler will find</h2>
+  <p>Several of the nine working challenges needed testbench fixes as well as — or instead of — design fixes. Four patterns kept recurring.</p>
+  <div class="diagram-grid cols-2">
+    <div class="diagram-panel accent-border">
+      <h4>Driving on the sampling edge</h4>
+      <p>Blocking writes straight after <code>@(posedge clk)</code> race the DUT's flops. Drive on <code>@(negedge clk)</code>; sample at <code>@(posedge clk); #1</code>, after the non-blocking updates.</p>
+    </div>
+    <div class="diagram-panel accent-border">
+      <h4>Hard-coded latency</h4>
+      <p>An accumulator tree has log₂N adder levels <em>plus</em> an input register. Waiting log₂N edges reported every result one test late. Wait for <code>valid_out</code>, then check the latency.</p>
+    </div>
+    <div class="diagram-panel accent-border">
+      <h4>Missing a one-cycle pulse</h4>
+      <p>Waiting a fixed number of edges and then testing a <code>valid</code> that is high for one cycle only either catches it or silently skips the check. Loop until it appears, with a timeout.</p>
+    </div>
+    <div class="diagram-panel accent-border">
+      <h4>Tests that run at once</h4>
+      <p>Separate <code>initial</code> blocks all start at time 0. A reset test fired in the middle of a counting test. Sequence tests with flags or a single <code>initial</code>.</p>
+    </div>
+  </div>
+  <div class="callout">
+    <div class="callout-label">Make “PASS” mean something</div>
+    <p>The DMA testbench printed PASSED whatever the data, and the FIFO scoreboard popped its expected value without comparing it. Count failures, report the count, and try one deliberate corruption to see it caught.</p>
+  </div>
+</section>
+
+<!-- 13 STATUS -->
+<section class="slide" id="s13">
+  <div class="slide-number">13</div>
+  <h2>Where the nineteen challenges stand</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Repository</th><th>Challenge</th><th>Status</th><th>Blocking construct</th></tr>
+    <tr><td>Interview_DSP</td><td>FIR filter</td><td style="color:var(--green)">passes (Verilator), both forms</td><td>—</td></tr>
+    <tr><td>Interview_DSP</td><td>FFT butterfly</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td></tr>
+    <tr><td>Interview_FPGA</td><td>Gray-code counter</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td></tr>
+    <tr><td>Interview_FPGA</td><td>Async FIFO</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td></tr>
+    <tr><td>Interview_FPGA</td><td>CDC handshake</td><td>not yet simulated</td><td>Verilator: <code>##</code>; Icarus: lifetime override</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>Accumulator tree</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>AXI DMA engine</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>GELU approximation</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>RMSNorm</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>exp() LUT</td><td style="color:var(--green)">passes (Verilator)</td><td>—</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>Systolic array</td><td>not yet simulated</td><td>Verilator: named <code>disable</code>; Icarus: array ports</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>MAC unit FP16/INT8</td><td>not yet simulated</td><td>Verilator: open-array argument; Icarus: <code>break</code></td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>Softmax pipeline</td><td>not yet simulated</td><td>Verilator: named <code>disable</code>; Icarus: lifetime override</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>KV-cache controller</td><td>not yet simulated</td><td>Verilator: named <code>disable</code></td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>RoPE unit</td><td>not yet simulated</td><td>Verilator: named <code>disable</code>; Icarus: array ports</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>Tile scheduler</td><td>not yet simulated</td><td>Verilator: named <code>disable</code></td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>Double-buffer controller</td><td>not yet simulated</td><td>Verilator: named <code>disable</code>; Icarus: SVA</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>Softmax UVM-lite testbench</td><td>compiles (slang)</td><td>Verilator: covergroup, virtual interface</td></tr>
+    <tr><td>RTL_LLM_Accelerators</td><td>Coverage plan</td><td>compiles (slang)</td><td>Verilator: covergroup</td></tr>
+  </table></div>
+</section>
+
+<!-- 14 CHOOSING -->
+<section class="slide" id="s14">
+  <div class="slide-number">14</div>
+  <h2>Choosing a simulator — and the disk it needs</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Job</th><th>Use</th></tr>
+    <tr><td>Is it legal SystemVerilog?</td><td><strong>slang</strong> — seconds per file, exact diagnostics</td></tr>
+    <tr><td>Synthesisable RTL, directed self-checking testbench</td><td><strong>Verilator</strong> (fast, compiled) or <strong>Icarus</strong> (simplest); both with cocotb</td></tr>
+    <tr><td>RTL plus <code>|=&gt;</code>/<code>$past</code> assertions</td><td><strong>Verilator</strong> — avoid <code>##</code> in 5.020</td></tr>
+    <tr><td>Classes, mailboxes, constrained random, covergroups, UVM</td><td><strong>xsim</strong> from free Vivado — the only free option here that covers them</td></tr>
+    <tr><td>Anything, as the final word</td><td>A commercial simulator (VCS, Xcelium, Questa) where available</td></tr>
+  </table></div>
+  <h3>Disk and drive</h3>
+  <ul>
+    <li><strong>Vivado</strong> is the only heavyweight here. A full install runs past 100 GB; choosing just the simulator plus one small device family brings it down to tens of GB. Icarus, Verilator and slang together fit in a few hundred MB.</li>
+    <li><strong>Hard disk vs SSD.</strong> Vivado launches and installs much faster from an SSD, because it loads thousands of files. Command-line xsim runs on testbenches this size are dominated by compiling and simulating, which a spinning disk handles acceptably. An SSD is a comfort, not a requirement.</li>
+  </ul>
+</section>
+
+<!-- 15 SETUP -->
+<section class="slide" id="s15">
+  <div class="slide-number">15</div>
+  <h2>Set-up recipes</h2>
+  <div class="code-block"><div class="code-header">slang — elaborate a file (pyslang 11)</div><pre><code>pip install pyslang
+python -c "from pyslang.syntax import SyntaxTree; from pyslang.ast import Compilation
+c = Compilation(); c.addSyntaxTree(SyntaxTree.fromFile('tb.sv'))
+print([str(d.code) for d in c.getAllDiagnostics() if d.isError()])"</code></pre></div>
+  <div class="code-block"><div class="code-header">Verilator without root — unpack the Debian package</div><pre><code>apt-get download verilator &amp;&amp; dpkg -x verilator_*.deb vl
+export VERILATOR_ROOT=$PWD/vl/usr/share/verilator
+ln -s $PWD/vl/usr/bin/verilator_bin $VERILATOR_ROOT/verilator_bin   <span class="cm"># wrapper looks here</span>
+vl/usr/bin/verilator --binary --timing --assert -j 1 --top-module tb tb.sv [model.c]
+./obj_dir/Vtb</code></pre></div>
+  <div class="code-block"><div class="code-header">Icarus</div><pre><code>sudo apt install iverilog
+iverilog -g2012 -s tb -o tb.vvp tb.sv &amp;&amp; vvp tb.vvp</code></pre></div>
+  <div class="code-block"><div class="code-header">Vivado simulator, command line, with a DPI-C model</div><pre><code>xsc softmax_golden.c                     <span class="cm"># builds xsim.dir/work/xsc/dpi.so</span>
+xvlog -sv challenge_02_softmax_testbench.sv
+xelab softmax_testbench -sv_lib dpi -s snap
+xsim snap -R</code></pre></div>
+</section>
+
+<footer class="footer">
+  <p><a href="https://github.com/BrendanJamesLynskey/SystemVerilog_Simulators">github.com/BrendanJamesLynskey/SystemVerilog_Simulators</a> · part of the <a href="https://github.com/BrendanJamesLynskey/Hardware">Hardware</a> collection</p>
+  <p>Observed results: Icarus Verilog 12.0, Verilator 5.020, pyslang 11.0, September 2026. Documented results: AMD UG900 (Vivado simulator SystemVerilog support tables) and Altera's Questa–Altera FPGA Edition product page and community forum.</p>
+</footer>
+
+<script>
+// Each cell: [status, source, note]. status: y works, p partly, n fails, u not established.
+// source: O observed in this exercise, D vendor documentation, K widely known (not re-tested).
+const TOOLS = ['Icarus 12', 'Verilator 5.020', 'Vivado xsim', 'Questa Starter'];
+const FEATURES = [
+  { id: 'rtl',   label: 'Synthesisable RTL (always_ff/comb, packages, structs)',
+    c: [['p','K','always_comb can re-evaluate forever when reading submodule outputs — use always @(*)'], ['y','O',''], ['y','D',''], ['y','D','']] },
+  { id: 'timing', label: 'Testbench timing: # delays, fork/join, events',
+    c: [['y','K',''], ['y','O','needs --timing'], ['y','D',''], ['y','D','']] },
+  { id: 'auto',  label: 'automatic variable inside a static block',
+    c: [['n','O','lifetime override not supported'], ['y','O',''], ['u','',''], ['u','','']] },
+  { id: 'arrarg', label: 'Unpacked arrays as task/function arguments',
+    c: [['n','O','unpacked subroutine ports unsupported'], ['p','O','fixed-size works; fixed → open [] fails in C++'], ['y','D',''], ['u','','']] },
+  { id: 'brk',   label: 'break / continue',
+    c: [['n','O','break not supported'], ['y','K',''], ['y','D',''], ['y','K','']] },
+  { id: 'fout',  label: 'Functions with output arguments',
+    c: [['n','O','“port is not an input port”'], ['y','K',''], ['u','',''], ['y','K','']] },
+  { id: 'sva',   label: 'Concurrent assertions with |=> and $past',
+    c: [['n','O','concurrent_assertion_item not supported'], ['y','O',''], ['y','D',''], ['u','','']] },
+  { id: 'seq',   label: 'Sequences with ## cycle delays',
+    c: [['n','O','no concurrent assertions'], ['n','O','Unsupported: ## in sequence'], ['y','D',''], ['u','','']] },
+  { id: 'dis',   label: 'disable of a named block from another fork branch',
+    c: [['u','',''], ['n','O','“disable isn’t underneath a begin”'], ['u','','disable fork is documented'], ['u','','']] },
+  { id: 'cls',   label: 'Classes and mailboxes',
+    c: [['p','K','partial class support'], ['p','O','elaborated; the virtual-interface use around them failed'], ['y','D',''], ['u','','']] },
+  { id: 'vif',   label: 'Virtual interfaces and clocking blocks',
+    c: [['u','',''], ['p','O','fails with parameterised interfaces and @(vif.cb)'], ['y','D',''], ['u','','']] },
+  { id: 'rand',  label: 'Constrained random: rand, constraints, randomize()',
+    c: [['n','K',''], ['u','',''], ['y','D',''], ['n','D','needs a paid verification licence']] },
+  { id: 'cov',   label: 'Covergroups (coverpoints, bins, cross)',
+    c: [['n','K',''], ['n','O','Unsupported: covergroup'], ['y','D','one bin form (§19.5.1.2) unsupported'], ['n','D','needs a paid verification licence']] },
+  { id: 'dpi',   label: 'DPI-C import of C functions',
+    c: [['n','K','VPI only'], ['y','O','C file on the command line'], ['y','D','open arrays included'], ['u','','']] },
+  { id: 'uvm',   label: 'UVM library',
+    c: [['n','K',''], ['u','',''], ['y','D','UVM 1.2'], ['u','','']] },
+];
+const SYM = { y: '✓', p: '◐', n: '✗', u: '?' };
+const RANK = { n: 0, u: 1, p: 2, y: 3 };
+const WORD = { y: 'runs', p: 'with workarounds', n: 'will not run', u: 'unknown' };
+
+// Static matrix (slide 04)
+(function buildMatrix() {
+  const t = document.getElementById('matrix');
+  let h = '<tr><th>Feature</th>' + TOOLS.map(x => `<th>${x}</th>`).join('') + '</tr>';
+  for (const f of FEATURES) {
+    h += `<tr><td>${f.label}</td>` + f.c.map(([s, src, note]) =>
+      `<td class="${s}" title="${note.replace(/"/g, '&quot;')}">${SYM[s]}${src ? `<sup>${src}</sup>` : ''}</td>`).join('') + '</tr>';
+  }
+  t.innerHTML = h;
+})();
+
+// Picker (slide 05)
+const picked = new Set(['rtl', 'timing']);
+const pills = document.getElementById('featPills');
+for (const f of FEATURES) {
+  const p = document.createElement('span');
+  p.className = 'pill'; p.dataset.id = f.id; p.textContent = f.label;
+  p.addEventListener('click', () => { picked.has(f.id) ? picked.delete(f.id) : picked.add(f.id); render(); });
+  pills.appendChild(p);
+}
+function render() {
+  pills.querySelectorAll('.pill').forEach(p => p.classList.toggle('active', picked.has(p.dataset.id)));
+  const out = document.getElementById('verdicts');
+  out.innerHTML = TOOLS.map((tool, i) => {
+    const sel = FEATURES.filter(f => picked.has(f.id));
+    if (!sel.length) return `<div class="metric"><div class="metric-label">${tool}</div><div class="metric-value">—</div></div>`;
+    let worst = 'y', why = [];
+    for (const f of sel) {
+      const [s, , note] = f.c[i];
+      if (RANK[s] < RANK[worst]) worst = s;
+      if (s !== 'y') why.push(`${SYM[s]} ${f.label}${note ? ' — ' + note : ''}`);
+    }
+    const colour = worst === 'y' ? 'var(--green)' : worst === 'n' ? 'var(--red)' : worst === 'p' ? 'var(--accent)' : 'var(--text-secondary)';
+    return `<div class="metric verdict"><div class="metric-label">${tool}</div>` +
+           `<div class="metric-value" style="color:${colour}">${SYM[worst]} ${WORD[worst]}</div>` +
+           (why.length ? `<span class="why">${why.join('<br>')}</span>` : '') + `</div>`;
+  }).join('');
+}
+const PRESETS = {
+  rtl: ['rtl', 'timing', 'brk'],
+  sva: ['rtl', 'timing', 'sva'],
+  uvmlite: ['rtl', 'timing', 'cls', 'vif', 'cov', 'dpi'],
+  none: [],
+};
+document.querySelectorAll('.preset').forEach(a => a.addEventListener('click', e => {
+  e.preventDefault(); picked.clear(); PRESETS[a.dataset.set].forEach(x => picked.add(x)); render();
+}));
+render();
+</script>
+
+</body>
+</html>
