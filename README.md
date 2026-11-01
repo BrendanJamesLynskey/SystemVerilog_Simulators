@@ -31,6 +31,7 @@ An interactive presentation comparing the free SystemVerilog tools — Icarus Ve
 
 ## Sources
 
+- **Verilator 5.048 re-test (FPGA_Design_Agent brief 04f, 2026-11-01):** a fifth column, filled only for the cells that were re-run: concurrent assertions and `##` sequences now run, constrained random runs when `z3` is on `PATH`, and covergroups are accepted but ignored (`COVERIGN`, no coverage collected). Other cells are unknown for 5.048. cocotb 2 needs Verilator 5.036 or newer, so it does not run on 5.020.
 - **Observed:** Icarus Verilog 12.0, Verilator 5.020 (Ubuntu 24.04 package), AMD Vivado simulator (xsim) 2025.2 and pyslang 11.0, run on the challenge files in
   [Interview_FPGA](https://github.com/BrendanJamesLynskey/Interview_FPGA),
   [Interview_DSP](https://github.com/BrendanJamesLynskey/Interview_DSP) and
