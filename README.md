@@ -28,9 +28,11 @@ An interactive presentation comparing the free SystemVerilog tools — Icarus Ve
 | 13 | Where the challenges stand | All nineteen pass (nine in Verilator, ten in xsim): what blocks the other tools and what was fixed |
 | 14 | Choosing a simulator | Which tool for which job; disk space and HDD vs SSD for Vivado |
 | 15 | Set-up recipes | slang, rootless Verilator, Icarus, and command-line xsim with DPI-C |
+| 16 | Measured under an automated agent | Verilator 5.048 vs Icarus 12.0 wall times on the same cocotb benches (1.8x to 7.5x), checker sources needed in the Verilator coverage run, and the Icarus 12 `tri1` pull-up quirk with a minimal reproduction |
 
 ## Sources
 
+- **FPGA_Design_Agent measurements (development tasks, 2026-11-09):** Verilator 5.048 and Icarus Verilog 12.0 under cocotb 2.0.1, run in the agent's sandbox container; slide 16. The `tri1` reproduction was re-run for this deck with Icarus 12.0.
 - **Verilator 5.048 re-test (FPGA_Design_Agent brief 04f, 2026-11-01):** a fifth column, filled only for the cells that were re-run: concurrent assertions and `##` sequences now run, constrained random runs when `z3` is on `PATH`, and covergroups are accepted but ignored (`COVERIGN`, no coverage collected). Other cells are unknown for 5.048. cocotb 2 needs Verilator 5.036 or newer, so it does not run on 5.020.
 - **Observed:** Icarus Verilog 12.0, Verilator 5.020 (Ubuntu 24.04 package), AMD Vivado simulator (xsim) 2025.2 and pyslang 11.0, run on the challenge files in
   [Interview_FPGA](https://github.com/BrendanJamesLynskey/Interview_FPGA),
